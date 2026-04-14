@@ -1,0 +1,73 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserRole {
+  TEACHER
+  STUDENT
+}
+
+enum QuestionType {
+  MCQ
+  TF
+  SHORT_ANSWER
+}
+
+model User {
+  user_id       String    @id @default(uuid()) @db.Uuid
+  email         String    @unique @db.VarChar(255)
+  password_hash String    @db.Text
+  role          UserRole
+
+  quizzes  Quiz[]    @relation("TeacherQuizzes")
+  attempts Attempt[]
+
+  @@map("users")
+}
+
+model Quiz {
+  quiz_id    String @id @default(uuid()) @db.Uuid
+  teacher_id String @db.Uuid
+  config     Json   @db.JsonB
+  live_code  String @unique @db.VarChar(10)
+
+  teacher   User       @relation("TeacherQuizzes", fields: [teacher_id], references: [user_id], onDelete: Restrict, onUpdate: Cascade)
+  questions Question[]
+  attempts  Attempt[]
+
+  @@index([teacher_id])
+  @@map("quizzes")
+}
+
+model Question {
+  q_id         String       @id @default(uuid()) @db.Uuid
+  quiz_id      String       @db.Uuid
+  type         QuestionType
+  content      Json         @db.JsonB
+  correct_ans  String       @db.Text
+
+  quiz Quiz @relation(fields: [quiz_id], references: [quiz_id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@index([quiz_id])
+  @@map("questions")
+}
+
+model Attempt {
+  attempt_id       String @id @default(uuid()) @db.Uuid
+  quiz_id          String @db.Uuid
+  student_id       String @db.Uuid
+  answers          Json   @db.JsonB
+  score            Int
+  violation_count  Int    @default(0)
+
+  quiz    Quiz @relation(fields: [quiz_id], references: [quiz_id], onDelete: Cascade, onUpdate: Cascade)
+  student User @relation(fields: [student_id], references: [user_id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@index([quiz_id])
+  @@index([student_id])
+  @@map("attempts")
+}
